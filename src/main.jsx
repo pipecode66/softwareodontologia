@@ -33,7 +33,7 @@ function Toast({ toast, close }) {
 }
 
 function Login({ onLogin }) {
-  const [form, setForm] = useState({ email:'admin@dentadoc.local', password:'Cambiar123!' });
+  const [form, setForm] = useState({ email:'', password:'' });
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   async function submit(e){ e.preventDefault(); setBusy(true); setError(''); try { onLogin(await api('/api/auth/login',{method:'POST',body:JSON.stringify(form)})); } catch(err){setError(err.message)} finally{setBusy(false)} }
   return <main className="login-page">
@@ -41,14 +41,12 @@ function Login({ onLogin }) {
       <div className="login-form">
         <Brand/><div className="login-copy"><span className="eyebrow">Acceso privado</span><h1>Consultorio digital</h1><p>Historias clínicas odontológicas claras, seguras y listas para entregar.</p></div>
         <form onSubmit={submit}>
-          <label>Correo profesional<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required autoComplete="username"/></label>
-          <label>Contraseña<input type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required autoComplete="current-password"/></label>
+          <label>Correo profesional<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required autoComplete="username" placeholder="nombre@consultorio.com" autoFocus/></label>
+          <label>Contraseña<input type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required autoComplete="current-password" placeholder="Ingresa tu contraseña"/></label>
           {error && <div className="form-error"><AlertCircle size={17}/>{error}</div>}
           <button className="button primary wide" disabled={busy}><ShieldCheck size={19}/>{busy?'Validando…':'Ingresar al consultorio'}</button>
         </form>
-        <div className="demo-note"><ShieldCheck size={16}/><span>Primer acceso local: <b>admin@dentadoc.local</b> / <b>Cambiar123!</b><br/>Cambia estas credenciales con variables de entorno antes de usar datos reales.</span></div>
       </div>
-      <aside className="login-aside"><span className="live-pill"><i/>Sistema local disponible</span><h2>Menos papeleo.<br/>Más atención.</h2><p>Registra la consulta, marca el odontograma y genera un PDF profesional en un solo flujo.</p><div className="feature-list"><div><ClipboardPlus/><span><b>Historia integral</b>Paciente, diagnóstico y tratamiento</span></div><div><Tooth/><span><b>Odontograma FDI</b>32 piezas permanentes</span></div><div><FileText/><span><b>PDF inmediato</b>Documento listo para entregar</span></div></div></aside>
     </section>
   </main>;
 }
@@ -80,7 +78,7 @@ function Patients({ startForPatient, openRecord }) {
   async function select(id){setSelected(await api('/api/patients/'+id))}
   return <><div className="hero compact"><div><span className="eyebrow">Directorio</span><h1>Pacientes</h1><p>Busca una persona y consulta su historial completo.</p></div><button className="button primary" onClick={()=>startForPatient(null)}><Plus size={19}/>Registrar historia</button></div>
     <div className="searchbox"><Search size={19}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar por nombre o documento…"/></div>
-    <section className="panel">{loading?<Loading/>:rows.length?<div className="patient-grid">{rows.map(p=><button key={p.id} className="patient-card" onClick={()=>select(p.id)}><span className="patient-initial large">{p.first_name[0]}{p.last_name[0]}</span><span><b>{p.first_name} {p.last_name}</b><small>{p.document_type} {p.document_number}</small></span><span className="patient-meta"><b>{p.record_count}</b><small>historias</small></span><ChevronRight/></button>)}</div>:<Empty icon={Users} title="No encontramos pacientes" text="Prueba otra búsqueda o registra una nueva historia." action={()=>startForPatient(null)}/>}</section>
+    <section className="panel">{loading?<Loading/>:rows.length?<div className="patient-grid">{rows.map(p=><button key={p.id} className="patient-card" onClick={()=>select(p.id)}><span className="patient-initial large">{p.first_name[0]}{p.last_name[0]}</span><span><b>{p.first_name} {p.last_name}</b><small>{p.document_type} {p.document_number}</small></span><span className="patient-meta"><b>{p.record_count}</b><small>historias</small></span><ChevronRight/></button>)}</div>:<Empty icon={Users} title="No encontramos pacientes" text="Intenta otra búsqueda o registra una nueva historia." action={()=>startForPatient(null)}/>}</section>
     {selected&&<div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><section className="drawer"><div className="drawer-head"><div><span className="eyebrow">Expediente</span><h2>{selected.first_name} {selected.last_name}</h2><p>{selected.document_type} {selected.document_number} · {selected.phone||'Sin teléfono'}</p></div><button className="icon-button" onClick={()=>setSelected(null)}><X/></button></div><div className="clinical-alerts"><span><b>Alergias</b>{selected.allergies||'No refiere'}</span><span><b>Antecedentes</b>{selected.medical_history||'No refiere'}</span></div><button className="button primary wide" onClick={()=>startForPatient(selected)}><Plus size={18}/>Nueva historia para este paciente</button><h3>Historial clínico</h3>{selected.records.length?<div className="timeline">{selected.records.map(r=><button key={r.id} onClick={()=>openRecord(r.id)}><i/><span><b>{r.diagnosis}</b><small>{new Date(r.consultation_date+'T12:00:00').toLocaleDateString('es-CO',{dateStyle:'long'})} · {r.folio}</small></span><ChevronRight/></button>)}</div>:<p className="muted">No hay consultas registradas.</p>}</section></div>}
   </>;
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'clave-de-pruebas-dentadoc-1234567890';
+process.env.JWT_SECRET = 'clave-validacion-dentadoc-1234567890';
 const { default: app } = await import('../server/index.js');
 
 test('flujo autenticado: crear historia, consultarla y descargar PDF', async (t) => {
@@ -19,8 +19,8 @@ test('flujo autenticado: crear historia, consultarla y descargar PDF', async (t)
   const create = await fetch(`${base}/api/records`, {
     method: 'POST', headers: { 'content-type': 'application/json', cookie },
     body: JSON.stringify({
-      patient: { document_type:'CC', document_number:unique, first_name:'Paciente', last_name:'Prueba', birth_date:'1990-01-01', sex:'', phone:'', email:'', address:'', emergency_contact:'', allergies:'No refiere', medical_history:'No refiere' },
-      consultation_date:'2026-10-07', reason:'Dolor dental de prueba', symptoms:'Dolor localizado', blood_pressure:'120/80', heart_rate:'72', diagnosis:'Caries dental', diagnosis_code:'K02.9', treatment:'Restauración en resina', observations:'Control en seis meses', odontogram:{'16':'caries'}, prescriptions:[], next_appointment:null, status:'final'
+      patient: { document_type:'CC', document_number:unique, first_name:'Paciente', last_name:'Validación', birth_date:'1990-01-01', sex:'', phone:'', email:'', address:'', emergency_contact:'', allergies:'No refiere', medical_history:'No refiere' },
+      consultation_date:'2026-10-07', reason:'Dolor dental localizado', symptoms:'Dolor localizado', blood_pressure:'120/80', heart_rate:'72', diagnosis:'Caries dental', diagnosis_code:'K02.9', treatment:'Restauración en resina', observations:'Control en seis meses', odontogram:{'16':'caries'}, prescriptions:[], next_appointment:null, status:'final'
     })
   });
   const createdBody = await create.json();

@@ -6,6 +6,7 @@ import {
   ShieldCheck, Stethoscope, UserRound, Users, X
 } from 'lucide-react';
 import './styles.css';
+import { dataApi, isSupabaseConfigured } from './supabase';
 
 function Tooth(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d="M12 5.1C9.9 2.8 6.2 2.6 4.4 5.2c-2.2 3.2.1 7.3 1.2 10.7.6 2 1.1 4.1 2.5 4.1 1.7 0 1.4-5.8 3.9-5.8s2.2 5.8 3.9 5.8c1.4 0 1.9-2.1 2.5-4.1 1.1-3.4 3.4-7.5 1.2-10.7C17.8 2.6 14.1 2.8 12 5.1Z"/><path d="M12 5.1c1.2 1.1 2.4 1.2 3.7.6"/></svg>;
@@ -16,11 +17,7 @@ const emptyPatient = { document_type:'CC', document_number:'', first_name:'', la
 const emptyRecord = { consultation_date:today, reason:'', symptoms:'', blood_pressure:'', heart_rate:'', diagnosis:'', diagnosis_code:'', treatment:'', observations:'', odontogram:{}, prescriptions:[], next_appointment:'', status:'final' };
 
 async function api(url, options = {}) {
-  const response = await fetch(url, { credentials:'same-origin', headers:{ 'Content-Type':'application/json', ...(options.headers || {}) }, ...options });
-  if (response.status === 204) return null;
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Ocurrió un error inesperado.');
-  return data;
+  return dataApi(url, options);
 }
 
 function Brand({ compact=false }) {
@@ -43,8 +40,9 @@ function Login({ onLogin }) {
         <form onSubmit={submit}>
           <label>Correo profesional<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required autoComplete="username" placeholder="nombre@consultorio.com" autoFocus/></label>
           <label>Contraseña<input type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required autoComplete="current-password" placeholder="Ingresa tu contraseña"/></label>
+          {!isSupabaseConfigured && <div className="form-error"><AlertCircle size={17}/>La conexión segura con la base de datos no está disponible.</div>}
           {error && <div className="form-error"><AlertCircle size={17}/>{error}</div>}
-          <button className="button primary wide" disabled={busy}><ShieldCheck size={19}/>{busy?'Validando…':'Ingresar al consultorio'}</button>
+          <button className="button primary wide" disabled={busy||!isSupabaseConfigured}><ShieldCheck size={19}/>{busy?'Validando…':'Ingresar al consultorio'}</button>
         </form>
       </div>
     </section>
@@ -112,10 +110,11 @@ function RecordForm({ initialPatient, onSaved, notify }) {
   </form>;
 }
 
-function RecordDetail({ id, back }) {
+function RecordDetail({ id, back, clinic }) {
   const [r,setR]=useState(null); useEffect(()=>{api('/api/records/'+id).then(setR)},[id]); if(!r)return <Loading/>;
   const marked=Object.entries(r.odontogram).filter(([,v])=>v!=='sano');
-  return <><div className="detail-toolbar"><button className="button subtle" onClick={back}><ArrowLeft size={18}/>Volver</button><a className="button primary" href={`/api/records/${id}/pdf`}><Download size={18}/>Descargar PDF</a></div><article className="document-preview"><header><Brand/><div><span>Historia clínica</span><b>{r.folio}</b></div></header><h1>Historia clínica odontológica</h1><div className="document-patient"><div><span>Paciente</span><b>{r.first_name} {r.last_name}</b></div><div><span>Documento</span><b>{r.document_type} {r.document_number}</b></div><div><span>Fecha</span><b>{new Date(r.consultation_date+'T12:00:00').toLocaleDateString('es-CO',{dateStyle:'long'})}</b></div><div><span>Alergias</span><b>{r.allergies||'No refiere'}</b></div></div><DocumentSection n="1" title="Motivo de consulta"><p>{r.reason}</p>{r.symptoms&&<p><b>Síntomas:</b> {r.symptoms}</p>}</DocumentSection><DocumentSection n="2" title="Diagnóstico"><p>{r.diagnosis_code&&<span className="code">{r.diagnosis_code}</span>} {r.diagnosis}</p></DocumentSection><DocumentSection n="3" title="Tratamiento realizado"><p>{r.treatment}</p></DocumentSection>{marked.length>0&&<DocumentSection n="4" title="Odontograma"><div className="tooth-summary">{marked.map(([t,s])=><span key={t}><b>{t}</b>{toothStatuses[s]}</span>)}</div></DocumentSection>}{r.prescriptions.length>0&&<DocumentSection n="5" title="Prescripción"><ol>{r.prescriptions.map((p,i)=><li key={i}><b>{p.name} {p.dose}</b><br/>{p.instructions}</li>)}</ol></DocumentSection>}{r.observations&&<DocumentSection n="6" title="Observaciones"><p>{r.observations}</p></DocumentSection>}<footer><div/><p><b>Profesional tratante</b><br/>Documento generado en DentaDoc</p></footer></article></>;
+  async function downloadPdf(){ const { downloadClinicalPdf } = await import('./clinicalPdf'); downloadClinicalPdf(r,clinic); }
+  return <><div className="detail-toolbar"><button className="button subtle" onClick={back}><ArrowLeft size={18}/>Volver</button><button className="button primary" onClick={downloadPdf}><Download size={18}/>Descargar PDF</button></div><article className="document-preview"><header><Brand/><div><span>Historia clínica</span><b>{r.folio}</b></div></header><h1>Historia clínica odontológica</h1><div className="document-patient"><div><span>Paciente</span><b>{r.first_name} {r.last_name}</b></div><div><span>Documento</span><b>{r.document_type} {r.document_number}</b></div><div><span>Fecha</span><b>{new Date(r.consultation_date+'T12:00:00').toLocaleDateString('es-CO',{dateStyle:'long'})}</b></div><div><span>Alergias</span><b>{r.allergies||'No refiere'}</b></div></div><DocumentSection n="1" title="Motivo de consulta"><p>{r.reason}</p>{r.symptoms&&<p><b>Síntomas:</b> {r.symptoms}</p>}</DocumentSection><DocumentSection n="2" title="Diagnóstico"><p>{r.diagnosis_code&&<span className="code">{r.diagnosis_code}</span>} {r.diagnosis}</p></DocumentSection><DocumentSection n="3" title="Tratamiento realizado"><p>{r.treatment}</p></DocumentSection>{marked.length>0&&<DocumentSection n="4" title="Odontograma"><div className="tooth-summary">{marked.map(([t,s])=><span key={t}><b>{t}</b>{toothStatuses[s]}</span>)}</div></DocumentSection>}{r.prescriptions.length>0&&<DocumentSection n="5" title="Prescripción"><ol>{r.prescriptions.map((p,i)=><li key={i}><b>{p.name} {p.dose}</b><br/>{p.instructions}</li>)}</ol></DocumentSection>}{r.observations&&<DocumentSection n="6" title="Observaciones"><p>{r.observations}</p></DocumentSection>}<footer><div/><p><b>Profesional tratante</b><br/>Documento generado en DentaDoc</p></footer></article></>;
 }
 function DocumentSection({n,title,children}){return <section className="document-section"><h2><span>{n}</span>{title}</h2>{children}</section>}
 function Empty({icon:Icon,title,text,action}){return <div className="empty"><span><Icon/></span><h3>{title}</h3><p>{text}</p><button className="button primary" onClick={action}><Plus size={17}/>Crear registro</button></div>}
@@ -130,7 +129,7 @@ function App(){
   function openRecord(id){setRecordId(id);setPage('detail')}
   async function logout(){await api('/api/auth/logout',{method:'POST'});setSession(null)}
   if(checking)return <Loading/>; if(!session)return <Login onLogin={setSession}/>;
-  return <Shell session={session} page={page} setPage={go} onLogout={logout}><Toast toast={toast} close={()=>setToast(null)}/>{page==='dashboard'&&<Dashboard go={go} openRecord={openRecord}/>} {page==='patients'&&<Patients startForPatient={newFor} openRecord={openRecord}/>} {page==='new'&&<RecordForm key={patient?.id||'new'} initialPatient={patient} notify={notify} onSaved={openRecord}/>} {page==='detail'&&<RecordDetail id={recordId} back={()=>go('dashboard')}/>}</Shell>
+  return <Shell session={session} page={page} setPage={go} onLogout={logout}><Toast toast={toast} close={()=>setToast(null)}/>{page==='dashboard'&&<Dashboard go={go} openRecord={openRecord}/>} {page==='patients'&&<Patients startForPatient={newFor} openRecord={openRecord}/>} {page==='new'&&<RecordForm key={patient?.id||'new'} initialPatient={patient} notify={notify} onSaved={openRecord}/>} {page==='detail'&&<RecordDetail id={recordId} clinic={session.clinic} back={()=>go('dashboard')}/>}</Shell>
 }
 
 createRoot(document.getElementById('root')).render(<App/>);
